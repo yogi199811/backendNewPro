@@ -21,7 +21,7 @@ app.get("/",(req,res)=>{
     res.send(" hi  i  am  running")
 })
 
-app.use("/user",userRoutes)
+app.use("/",userRoutes)
 
 connectDb()
 

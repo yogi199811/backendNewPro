@@ -3,13 +3,83 @@ import User from "../model/user.model.js";
 
 const router = express.Router();
 
-router.route("/signup").post(async (req, res) => {
+router.route("/users").get(async (req, res) => {
+
+    const {page,limit,sort} = req.query
+
+    const skip = (page -1) * limit
+
+    
+  const getAllUsers = await User.find({isActive:true})
+
+
+  const totalUsers  = await User.countDocuments({isActive:false})
+
+  return res.status(200).json({
+    message: "get all the users",
+    success: true,
+    users: getAllUsers,
+    totalUsers,
+    currentPage:page,
+    totalPages :Math.ceil(totalUsers/limit)
+  });
+});
+
+router.route("/users/:id").get(async (req, res) => {
   try {
-    const { username, email, password } = req.body;
+    const { id } = req.params;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(400).json({
+        message: "can not find user by this ID",
+        success: false,
+      });
+    }
+
+    const findUser = await User.findById(user._id).select("-password");
+
+    return res.status(200).json({
+      message: "user find Successfuly",
+      findUser,
+      success: true,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+    });
+  }
+});
+
+router.route("/users/:id").put(async (req, res) => {
+  const { id } = req.params;
+  const user = await User.findById(id);
+
+  if (!user) {
+    return res.status(400).json({
+      message: "can not find user by this ID",
+      success: false,
+    });
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(user._id, {
+    name: req.body.name,
+  });
+
+  return res.status(200).json({
+    message: "user update successfully",
+    updatedUser,
+  });
+});
+
+router.route("/users").post(async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
 
     console.log(req.body);
 
-    if (!username || !email || !password) {
+    if (!name || !email || !password) {
       return res.status(400).json({
         message: "username, email and password are required",
       });
@@ -24,7 +94,7 @@ router.route("/signup").post(async (req, res) => {
     }
 
     const newUser = await User.create({
-      username,
+      name,
       email,
       password,
     });
@@ -44,47 +114,32 @@ router.route("/signup").post(async (req, res) => {
   }
 });
 
-router.route("/signin").post(async (req, res) => {
+router.route("/users/:id").delete(async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { id } = req.params;
 
-    if (!email || !password) {
+    if(!id) return
+
+    const user = await User.findByIdAndUpdate(
+        id,
+        {isActive:false}
+    );
+
+    if (!user) {
       return res.status(400).json({
+        message: "can not find user by this ID and delete",
         success: false,
-        message: " email and password is require",
       });
     }
-
-    const userExist = await User.findOne({ email });
-
-    if (!userExist) {
-      return res.status(400).json({
-        message: "User Does Not Exist",
-      });
-    }
-
-    const isPasswordValid = await userExist.isPasswordCorrect(password);
-
-    if (!isPasswordValid) {
-      res
-        .json({
-          message: "password is not valid",
-        })
-        .status(400);
-    }
-
-    const token = await userExist.generateToken();
-
-    const user = await User.findById(userExist._id).select("-password")
 
     return res.status(200).json({
-      message: "User Login Successfully",
-      user,
-      token,
+      message: "user Deleted Successfuly",
+      success: true,
+      deleteUser: user,
     });
   } catch (error) {
     res.status(500).json({
-      message: "something went wrong from server",
+      error: error.message,
     });
   }
 });
